@@ -16,6 +16,8 @@ newPort = 0
 
 ser = serial.Serial()
 
+connectiondelay = 2;
+
 portSetOld = set()
 
 
@@ -33,21 +35,27 @@ def wait_for_encoder_boot():
     global ser
     global camera
     global number
+    isJson = False
     if ser.is_open:
         while True:
             x = ser.readline()
+            print(ser.readline())
             if x == b"######\r\n":
                 print("Encoder Connected")
-                while True:
-                    ser.write(b"$g") #Write the status get command until it returns something valid
-                    x2 = ser.readline()
-                    if x2:
-                        print(x2)
-                        y = json.loads(x2)
-                        camera = y["cam"][1]
-                        number = y["num"][1]
-                        sio.connect('http://localhost:3000')
-                        break
+                ser.write(b"$g") #Write the status get command until it returns something valid
+                print("Sent interrupt")
+            try:
+                json.loads(x)
+            except:
+                ser.write(b"$g")  # Write the status get command until it returns something valid
+                print("Sent interrupt")
+                pass
+            else:
+                print(x)
+                y = json.loads(x)
+                camera = y["cam"][1]
+                number = y["num"][1]
+                sio.connect('http://localhost:3000')
                 break
 
 
@@ -55,6 +63,7 @@ def poll_ports():
     global portSetOld
     global newPort
     global ser
+    global connectiondelay
     connected = False
 
     t = threading.Timer(1, poll_ports)
@@ -69,8 +78,15 @@ def poll_ports():
         ser.baudrate = 115200
         ser.timeout = 5
 
-        time.sleep(4) #Encoder enumerates before serial port becomes available, wait a bit
-        ser.open()
+        result = False
+        while result is False:
+            try:
+                ser.open()
+                result = True
+            except:
+                print("Waiting for OS to release COM port...")
+                pass
+
         t.cancel()  # done polling
 
         connected = True
