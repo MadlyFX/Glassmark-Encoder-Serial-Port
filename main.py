@@ -148,3 +148,8 @@ def on_message(data):
     cameraFormatted = "$b" + str(data)
     print("Blackout")
     ser.write(cameraFormatted.encode())
+
+@sio.on('flashLED')
+def on_message(data):
+    flashLEDformatted = "$f" + str(data)
+    ser.write(flashLEDformatted.encode())
